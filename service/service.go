@@ -41,6 +41,7 @@ type service struct {
 	keyAPI     KeyAPI
 	words      []string
 	pathResult string
+	tempResult map[string]struct{}
 }
 
 func NewService(db *sql.DB, words []string, etherAPI []string, bscAPI []string, pathResult string) *service {
@@ -53,6 +54,7 @@ func NewService(db *sql.DB, words []string, etherAPI []string, bscAPI []string, 
 		},
 		words:      words,
 		pathResult: pathResult,
+		tempResult: make(map[string]struct{}),
 	}
 }
 
@@ -77,11 +79,12 @@ func (s *service) KeysToSliceString(m map[string]string) []string {
 
 func (s *service) ProcessGetPhrase(length int) {
 	wg := &sync.WaitGroup{}
+	mu := &sync.Mutex{}
 	var ch = make(chan error)
 
 	for i := 0; i < len(s.keyAPI.APIETHER); i++ {
 		wg.Add(1)
-		go s.WorkerCheck(i, s.keyAPI.APIETHER[i], s.keyAPI.APIBSC[i], length, wg, ch)
+		go s.WorkerCheck(i+1, s.keyAPI.APIETHER[i], s.keyAPI.APIBSC[i], length, wg, mu, ch)
 	}
 
 	wg.Wait()
@@ -94,12 +97,10 @@ func (s *service) ProcessGetPhrase(length int) {
 	}
 }
 
-func (s *service) WorkerCheck(i int, apiEther string, apiBSC string, length int, wg *sync.WaitGroup, ch chan error) {
+func (s *service) WorkerCheck(i int, apiEther string, apiBSC string, length int, wg *sync.WaitGroup, mu *sync.Mutex, ch chan error) {
 	defer wg.Done()
 
-	var tempResult = make(map[string]*struct{})
 	var tempProcess = make(map[string]string) // process every 20 { address : mnemonic }
-
 	var count int = 1
 
 	for {
@@ -108,13 +109,15 @@ func (s *service) WorkerCheck(i int, apiEther string, apiBSC string, length int,
 			continue
 		}
 
-		if _, ok := tempResult[mnemonic]; !ok {
-			tempResult[mnemonic] = &struct{}{}
+		mu.Lock()
+		if _, ok := s.tempResult[mnemonic]; !ok {
+			s.tempResult[mnemonic] = struct{}{}
 			address := s.GetAddress(mnemonic)
 			tempProcess[address] = mnemonic
 		} else {
 			continue
 		}
+		mu.Unlock()
 
 		if len(tempProcess) >= 20 {
 			log.Println("go:", i, "count:", count)
@@ -162,9 +165,11 @@ func (s *service) WorkerCheck(i int, apiEther string, apiBSC string, length int,
 			count++
 		}
 
-		if len(tempResult) >= 1_000_000 {
-			tempResult = make(map[string]*struct{})
+		mu.Lock()
+		if len(s.tempResult) >= 1_500_000 {
+			s.tempResult = make(map[string]struct{})
 		}
+		mu.Unlock()
 	}
 }
 
