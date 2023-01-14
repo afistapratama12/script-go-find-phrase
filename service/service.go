@@ -105,6 +105,7 @@ func (s *service) WorkerCheck(i int, apiEther string, apiBSC string, length int,
 
 	for {
 		mnemonic := internal.GetPhrase(s.words, length)
+
 		if ok := s.checkPhrase(mnemonic); !ok {
 			continue
 		}
