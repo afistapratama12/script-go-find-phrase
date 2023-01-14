@@ -1,0 +1,18 @@
+Postgres cluster crypto-script-db created
+  Username:    postgres
+  Password:    8YlR0KsLq61CGEw
+  Hostname:    crypto-script-db.internal
+  Proxy port:  5432
+  Postgres port:  5433
+  Connection string: postgres://postgres:8YlR0KsLq61CGEw@crypto-script-db.internal:5432
+
+
+render PG Access
+
+internal URL : postgres://crypto_script_db_user:qVi1LZXTvAEQrH64dlVMMtK9aZHaMUAp@dpg-ceve1chgp3jjsh3ai3n0-a/crypto_script_db
+external URL : postgres://crypto_script_db_user:qVi1LZXTvAEQrH64dlVMMtK9aZHaMUAp@dpg-ceve1chgp3jjsh3ai3n0-a.oregon-postgres.render.com/crypto_script_db
+
+username : crypto_script_db_user
+password :  qVi1LZXTvAEQrH64dlVMMtK9aZHaMUAp
+Hostname: dpg-ceve1chgp3jjsh3ai3n0-a
+Database : crypto_script_db

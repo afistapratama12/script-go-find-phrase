@@ -1,0 +1,27 @@
+
+
+
+result {mnemonic : *struct{} } <- duplicate checking
+temp {address: mnemonic} <- get 20 data for collect address and must unique
+
+start
+
+penampung : listWord, dan length 12
+
+worker pool based on API KEY SET
+
+
+process 1       process 2       process 3       process 4       process 5       process 6
+parameter :
+API KEY ETHER
+API KEY BSC
+
+-----
+get 20 data with checking duplicate in `result`
+process get address from temp
+check every result, 
+if found, set to result txt
+
+
+
+
