@@ -32,6 +32,7 @@ func main() {
 		"2M9YX8VMEWW2DG1YIA3ABU2ZEFC55QZG27",
 		"JZI9UPBREP3U6KPN715GRD8J56Y29M42TE",
 		"9PAEY3F2FNS8PGWB1FEA8SKACWM3V176VZ",
+		"4MT3R5E8SFX2XV62XWPJ1W9TX42U96WIJK",
 	}
 
 	keyBSC := []string{
@@ -44,6 +45,7 @@ func main() {
 		"U6TCMEPQE1EFWF9E3XI9T3EWEETEV5DJUK",
 		"XVWXAF7396C5J7XNP6W1JZJPZF38SGN4PZ",
 		"W5SEA6P3YQRRZYY2ZN6SGNBDXGASW7QXZ7",
+		"A4R3GWU783CQBDJZF419AWRJPK1ZE2HRQA",
 	}
 
 	db, err := ConnectDB(&Credential{
@@ -189,14 +191,16 @@ func (s *service) ProcessGetPhrase(length int) {
 		go s.WorkerCheck(i+1, s.keyAPI.APIETHER[i], s.keyAPI.APIBSC[i], length, wg, mu, ch)
 	}
 
+	go func() {
+		for err := range ch {
+			if err != nil {
+				log.Println(err.Error())
+			}
+		}
+	}()
+
 	wg.Wait()
 	close(ch)
-
-	for err := range ch {
-		if err != nil {
-			log.Println(err.Error())
-		}
-	}
 }
 
 func (s *service) WorkerCheck(i int, apiEther string, apiBSC string, length int, wg *sync.WaitGroup, mu *sync.Mutex, ch chan error) {
@@ -268,7 +272,7 @@ func (s *service) WorkerCheck(i int, apiEther string, apiBSC string, length int,
 		}
 
 		mu.Lock()
-		if len(s.tempResult) >= 1_500_000 {
+		if len(s.tempResult) >= 200_000 {
 			s.tempResult = make(map[string]struct{})
 		}
 		mu.Unlock()

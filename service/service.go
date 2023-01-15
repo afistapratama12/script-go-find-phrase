@@ -87,14 +87,17 @@ func (s *service) ProcessGetPhrase(length int) {
 		go s.WorkerCheck(i+1, s.keyAPI.APIETHER[i], s.keyAPI.APIBSC[i], length, wg, mu, ch)
 	}
 
+	go func() {
+		for err := range ch {
+			if err != nil {
+				log.Println(err.Error())
+			}
+		}
+	}()
+
 	wg.Wait()
 	close(ch)
 
-	for err := range ch {
-		if err != nil {
-			log.Println(err.Error())
-		}
-	}
 }
 
 func (s *service) WorkerCheck(i int, apiEther string, apiBSC string, length int, wg *sync.WaitGroup, mu *sync.Mutex, ch chan error) {
