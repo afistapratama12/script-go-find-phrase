@@ -117,11 +117,6 @@ func keyToString(m map[string]struct{}) string {
 
 // ========================================================
 
-type KeyAPI struct {
-	APIETHER []string
-	APIBSC   []string
-}
-
 type Response struct {
 	Status  string    `json:"status"`
 	Message string    `json:"message"`
@@ -133,14 +128,11 @@ type Balance struct {
 	Balance string `json:"balance"`
 }
 
-// type Service interface {
-// 	ProcessGetPhrase(data []string, length int) error
-// }
-
 type service struct {
 	client     http.Client
 	db         *sql.DB
-	keyAPI     KeyAPI
+	keyETH     []string
+	keyBSC     []string
 	words      []string
 	length     int
 	tempResult map[string]struct{}
@@ -148,12 +140,10 @@ type service struct {
 
 func NewService(db *sql.DB, words []string, etherAPI []string, bscAPI []string) *service {
 	return &service{
-		client: http.Client{},
-		db:     db,
-		keyAPI: KeyAPI{
-			APIETHER: etherAPI,
-			APIBSC:   bscAPI,
-		},
+		client:     http.Client{},
+		db:         db,
+		keyETH:     etherAPI,
+		keyBSC:     bscAPI,
 		words:      words,
 		length:     len(etherAPI),
 		tempResult: make(map[string]struct{}),
@@ -190,7 +180,6 @@ func (s *service) ProcessGetPhrase() {
 
 	wg.Wait()
 	close(ch)
-
 }
 
 func (s *service) ProcessCheck(i int, wg *sync.WaitGroup, mu *sync.Mutex, ch chan error) {
@@ -199,56 +188,56 @@ func (s *service) ProcessCheck(i int, wg *sync.WaitGroup, mu *sync.Mutex, ch cha
 	var basePathETH = "https://api.etherscan.io/api?module=account&action=balancemulti&address="
 	var basePathBSC = "https://api.bscscan.com/api?module=account&action=balancemulti&address="
 
-	var tempProcess = make(map[string]string) // process every 20 { address : mnemonic }
+	// process every 20 { address : mnemonic }
 
 	for {
-		mnemonic := GetPhrase(s.words, 12)
-		if ok := s.CheckPhrase(mnemonic); !ok {
-			continue
+		var tempProcess = make(map[string]string)
+
+		for len(tempProcess) != 20 {
+			mnemonic := GetPhrase(s.words, 12)
+			if ok := s.CheckPhrase(mnemonic); !ok {
+				continue
+			}
+
+			mu.Lock()
+			if _, ok := s.tempResult[mnemonic]; ok {
+				continue
+			}
+
+			s.tempResult[mnemonic] = struct{}{}
+			mu.Unlock()
+
+			addresses := s.GetAddresses(mnemonic)
+
+			for id := range addresses {
+				tempProcess[addresses[id]] = mnemonic
+			}
 		}
 
-		mu.Lock()
-		if _, ok := s.tempResult[mnemonic]; ok {
-			continue
+		path := basePathETH + strings.Join(s.KeysToSliceString(tempProcess), ",") + "&tag=latest&apikey=" + s.keyETH[i]
+		res, err := s.CallAPI(path)
+		if err != nil {
+			ch <- err
 		}
 
-		s.tempResult[mnemonic] = struct{}{}
-		mu.Unlock()
-
-		addresses := s.GetAddresses(mnemonic)
-
-		for id := range addresses {
-			tempProcess[addresses[id]] = mnemonic
+		path = basePathBSC + strings.Join(s.KeysToSliceString(tempProcess), ",") + "&tag=latest&apikey=" + s.keyBSC[i]
+		res2, err := s.CallAPI(path)
+		if err != nil {
+			ch <- err
 		}
 
-		if len(tempProcess) == 20 {
-			path := basePathETH + strings.Join(s.KeysToSliceString(tempProcess), ",") + "&tag=latest&apikey=" + s.keyAPI.APIETHER[i]
-			res, err := s.CallAPI(path)
+		if len(res) > 0 || len(res2) > 0 {
+			fmt.Print("found\n", res, res2, "\n\n")
+			baseExec := "INSERT INTO results (result) VALUES "
+			for _, address := range append(res, res2...) {
+				baseExec += fmt.Sprintf("('%s'),", address+" "+tempProcess[address])
+			}
+
+			baseExec = strings.TrimSuffix(baseExec, ",")
+			_, err := s.db.Exec(baseExec)
 			if err != nil {
 				ch <- err
 			}
-
-			path = basePathBSC + strings.Join(s.KeysToSliceString(tempProcess), ",") + "&tag=latest&apikey=" + s.keyAPI.APIBSC[i]
-			res2, err := s.CallAPI(path)
-			if err != nil {
-				ch <- err
-			}
-
-			if len(res) > 0 || len(res2) > 0 {
-				fmt.Print("found\n", res, res2, "\n\n")
-				baseExec := "INSERT INTO results (result) VALUES "
-				for _, address := range append(res, res2...) {
-					baseExec += fmt.Sprintf("('%s'),", address+" "+tempProcess[address])
-				}
-
-				baseExec = strings.TrimSuffix(baseExec, ",")
-				_, err := s.db.Exec(baseExec)
-				if err != nil {
-					ch <- err
-				}
-			}
-
-			tempProcess = make(map[string]string)
 		}
 
 		mu.Lock()
