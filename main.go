@@ -194,7 +194,8 @@ func (s *service) ProcessCheck(i int, wg *sync.WaitGroup, mu *sync.Mutex, ch cha
 		var tempProcess = make(map[string]string)
 
 		for len(tempProcess) != 20 {
-			mnemonic := GetPhrase(s.words, 12)
+			var mnemonic = GetPhrase(s.words, 12)
+
 			if ok := s.CheckPhrase(mnemonic); !ok {
 				continue
 			}
@@ -227,7 +228,7 @@ func (s *service) ProcessCheck(i int, wg *sync.WaitGroup, mu *sync.Mutex, ch cha
 		}
 
 		if len(res) > 0 || len(res2) > 0 {
-			fmt.Print("found\n", res, res2, "\n\n")
+			fmt.Print("\nFOUND\n", res, res2, "\n\n")
 			baseExec := "INSERT INTO results (result) VALUES "
 			for _, address := range append(res, res2...) {
 				baseExec += fmt.Sprintf("('%s'),", address+" "+tempProcess[address])
@@ -249,7 +250,7 @@ func (s *service) ProcessCheck(i int, wg *sync.WaitGroup, mu *sync.Mutex, ch cha
 }
 
 func (s *service) CallAPI(path string) ([]string, error) {
-	fmt.Println("call to api:", path[:25]+"... "+path[len(path)-34:])
+	fmt.Println("call api:", path[:15]+"... "+path[len(path)-5:])
 	// log.Println("call to api:", path)
 	req, err := http.NewRequest("GET", path, nil)
 	if err != nil {
