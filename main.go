@@ -249,7 +249,7 @@ func (s *service) ProcessCheck(i int, wg *sync.WaitGroup, mu *sync.Mutex, ch cha
 }
 
 func (s *service) CallAPI(path string) ([]string, error) {
-	log.Println("call to api:", path[:100]+"...")
+	fmt.Println("call to api:", path[:25]+"... "+path[len(path)-34:])
 	// log.Println("call to api:", path)
 	req, err := http.NewRequest("GET", path, nil)
 	if err != nil {
